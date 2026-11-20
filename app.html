@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Mi Bus UAI</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="img/icon-180.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Mi Bus UAI">
+<meta name="theme-color" content="#1f2d5c">
+<style>
+:root{--bg:#f4f6fa;--ink:#1c2340;--mut:#6f7694;--line:#e2e6ef;--navy:#1f2d5c;--ok:#2e9e5b;--mid:#e3a21a;--hi:#d64545}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font:16px/1.4 -apple-system,system-ui,"Segoe UI",Arial,sans-serif;background:var(--bg);color:var(--ink);padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+header{background:var(--navy);color:#fff;padding:16px 18px 14px}
+header .t{font-size:13px;opacity:.75}
+header h1{margin:2px 0 0;font-size:20px}
+.wrap{padding:14px 16px 90px;max-width:480px;margin:0 auto}
+.card{background:#fff;border-radius:16px;padding:16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.mut{color:var(--mut);font-size:14px}
+.big{font-size:56px;font-weight:800;line-height:1;color:var(--navy);margin:6px 0}
+.pill{display:inline-block;padding:4px 12px;border-radius:99px;color:#fff;font-weight:700;font-size:14px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.alerta{border-radius:12px;padding:12px 14px;font-weight:700;margin-top:12px}
+.a-ok{background:#e8f5ee;color:#1e6b3f}.a-ya{background:#fff1cc;color:#7a5600}.a-tarde{background:#fde8e8;color:#9b2c2c}
+button{font:inherit;border:0;border-radius:14px;padding:14px 16px;font-weight:700;cursor:pointer}
+.primario{background:var(--navy);color:#fff;width:100%}
+.sec{background:#e9ecf4;color:var(--ink)}
+.lista div{padding:9px 0;border-top:1px solid var(--line);display:flex;justify-content:space-between}
+.barra{height:10px;background:var(--line);border-radius:5px;overflow:hidden;margin:12px 0 6px}
+.barra i{display:block;height:100%;background:var(--navy)}
+.fijo{position:fixed;left:0;right:0;bottom:0;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(transparent,var(--bg) 30%)}
+.fijo .in{max-width:480px;margin:0 auto}
+select{font:inherit;width:100%;padding:10px;border-radius:10px;border:1px solid var(--line);background:#fff;margin:4px 0 10px}
+#scanner{position:fixed;inset:0;background:#000;display:none;flex-direction:column;z-index:10}
+#scanner video{flex:1;width:100%;object-fit:cover}
+#scanner .bar{padding:16px;display:flex;gap:10px;justify-content:space-between;color:#fff;align-items:center}
+.instalar{background:#eef3ff;border:1px dashed #9fb3ea;font-size:14px}
+.ok-grande{font-size:44px;line-height:1}
+.badge{display:inline-block;background:#ffd23f;color:#3b2f00;font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px}
+</style>
+</head>
+<body>
+<header><div class="t">Buses de acercamiento UAI</div><h1>Mi Bus UAI</h1></header>
+<div class="wrap" id="vista"></div>
+<div class="fijo" id="fijo"><div class="in"><button class="primario" id="btnScan">📷 Escanear QR del bus</button></div></div>
+<div id="scanner"><video id="video" playsinline muted></video><canvas id="cv" hidden></canvas>
+  <div class="bar"><span>Apunta al QR del bus</span><button class="sec" id="btnCerrar">Cerrar</button></div></div>
+<script src="config.js?v=3"></script>
+<script src="horarios.js?v=2"></script>
+<script src="rutas.js?v=2"></script>
+<script src="core.js?v=4"></script>
+<script>
+(function(){
+"use strict";
+var U=window.UAI,S=U.S,qs=new URLSearchParams(location.search);
+function lsGet(k,d){try{var v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}}
+function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+var pref=lsGet("uai_pref",{serv:"GRE-S",parada:2,caminata:5});
+var viaje=lsGet("uai_viaje",null);           // {bus, t}
+if(viaje&&new Date(viaje.t).toDateString()!==new Date().toDateString())viaje=null;
+var MARGEN=2;
+
+/* ---------- check-in desde la URL del QR (cámara nativa del iPhone) ---------- */
+function hacerCheckin(raw){
+  var id=raw;try{var u=new URL(raw);id=u.searchParams.get("checkin")||raw}catch(e){}
+  id=String(id).trim();if(!id)return;
+  var real=U.SYNC.checkin(id);
+  viaje={bus:real,t:Date.now()};lsSet("uai_viaje",viaje);
+  if(navigator.vibrate)navigator.vibrate(120);
+  pintar();
+}
+if(qs.get("checkin")){
+  var ya=lsGet("uai_ultimo_qr",null),id=qs.get("checkin");
+  // evita duplicar el check-in si la página se recarga con la misma URL
+  if(!(ya&&ya.id===id&&Date.now()-ya.t<10*60000)){lsSet("uai_ultimo_qr",{id:id,t:Date.now()});setTimeout(function(){hacerCheckin(id)},400)}
+  qs.delete("checkin");history.replaceState(null,"",location.pathname+(qs.toString()?"?"+qs.toString():""));
+}
+
+function viajeActual(){if(!viaje)return null;var t=U.todos();for(var i=0;i<t.length;i++)if(t[i].id===viaje.bus)return t[i];return null}
+function nombreParada(serv,k){return S[serv].paradas[k]}
+function proximos(){
+  var m=U.minDelDia(),out=[];
+  U.todos().forEach(function(v){if(v.serv!==pref.serv)return;var a=U.llegadaA(v,pref.parada);if(a>=m-0.3)out.push({v:v,a:a})});
+  out.sort(function(x,y){return x.a-y.a});return out;
+}
+function opciones(){
+  var h='';Object.keys(S).forEach(function(k){var s=S[k];if(s.dir!=="S")return;h+='<option value="'+k+'"'+(k===pref.serv?" selected":"")+'>'+s.nombre+'</option>'});return h;
+}
+function paradasDe(serv){var s=S[serv],h='';for(var k=0;k<s.paradas.length-1;k++)h+='<option value="'+k+'"'+(k===pref.parada?" selected":"")+'>'+s.paradas[k]+'</option>';return h}
+
+function pintar(){
+  var V=document.getElementById("vista"),m=U.minDelDia(),h="";
+  var va=viajeActual();
+  if(va){
+    var llega=va.dep+U.duracion(va),f=U.fraccion(va,m),o=U.ocupacion(va,m);
+    if(m>=llega){
+      h+='<div class="card"><div class="ok-grande">✅</div><h2 style="margin:8px 0 4px">Llegaste a la UAI</h2><div class="mut">'+U.fmt(llega)+' · a la hora</div>'+
+         '<p style="font-size:18px;font-weight:700;color:var(--navy)">«Sabes cuándo llega tu bus y si hay cupo, antes de salir.»</p>'+
+         '<button class="sec" style="width:100%" id="btnFin">Listo</button></div>';
+    }else{
+      var k=1,s=S[va.serv];while(k<s.si.length-1&&U.llegadaA(va,k)<m)k++;
+      h+='<div class="card"><div class="mut">Check-in listo ✓ · vas en el bus</div><div class="big">'+Math.max(1,Math.ceil(llega-m))+' min</div>'+
+         '<div class="row"><span>Llegas a las <b>'+U.fmt(llega)+'</b></span><span class="pill" style="background:'+U.color(o.frac)+'">'+o.cupos+' cupos</span></div>'+
+         '<div class="barra"><i style="width:'+Math.round(100*Math.max(0,Math.min(1,f)))+'%"></i></div>'+
+         '<div class="mut">Próxima parada: '+s.paradas[k]+'</div><div class="mut">'+(va.demo?"Bus DEMO · Grecia → UAI":s.nombre+" · salida "+U.fmt(va.dep))+'</div></div>'+
+         '<div class="card mut">La central de la UAI ya ve tu check-in: el bus suma un pasajero y se actualizan los cupos para los que esperan en los próximos paraderos.</div>';
+    }
+  }else{
+    var lst=proximos(),p=lst[0];
+    h+='<div class="card"><div class="mut">'+S[pref.serv].nombre+' · '+nombreParada(pref.serv,pref.parada)+'</div>';
+    if(!p){h+='<h2>No quedan buses hoy en este recorrido</h2><div class="mut">Revisa el horario de mañana en uai.cl.</div></div>'}
+    else{
+      var min=Math.max(0,Math.ceil(p.a-m)),o2=U.ocupacion(p.v,p.a);
+      h+='<div>Tu bus llega al paradero en</div><div class="big">'+min+' min</div>'+
+         '<div class="row"><span class="pill" style="background:'+U.color(o2.frac)+'">'+o2.cupos+' cupos</span><span class="mut">llega '+U.fmt(p.a)+(p.v.demo?" · bus DEMO":" · sale "+U.fmt(p.v.dep))+'</span></div>';
+      var c=pref.caminata;
+      if(min>c+MARGEN)h+='<div class="alerta a-ok">Tienes tiempo: sal de casa en '+(min-c-MARGEN)+' min</div>';
+      else if(min>=c)h+='<div class="alerta a-ya">🔔 Sal ahora: caminas '+c+' min y llegas antes que el bus</div>';
+      else{var q=lst[1];h+='<div class="alerta a-tarde">Si sales ahora no alcanzas este bus.'+(q?' El siguiente llega en '+Math.ceil(q.a-m)+' min.':'')+'</div>'}
+      h+='</div>';
+      if(lst.length>1){h+='<div class="card"><div class="mut">Siguientes buses</div><div class="lista">';lst.slice(1,4).forEach(function(x){var ox=U.ocupacion(x.v,x.a);h+='<div><span>'+U.fmt(x.a)+'</span><span class="mut">'+ox.cupos+' cupos</span></div>'});h+='</div></div>'}
+    }
+    h+='<div class="card"><div class="mut">Recorrido</div><select id="selServ">'+opciones()+'</select><div class="mut">Tu paradero</div><select id="selPar">'+paradasDe(pref.serv)+'</select>'+
+       '<div class="mut">Minutos caminando desde tu casa</div><select id="selCam">'+[1,2,3,5,7,10,15].map(function(n){return'<option'+(n===pref.caminata?" selected":"")+'>'+n+'</option>'}).join("")+'</select></div>';
+    var standalone=window.navigator.standalone||matchMedia("(display-mode: standalone)").matches;
+    if(!standalone&&/iPhone|iPad/.test(navigator.userAgent))h+='<div class="card instalar">Para tenerla como app: toca <b>Compartir</b> en Safari y luego <b>Agregar a pantalla de inicio</b>.</div>';
+    h+='<div class="mut" style="text-align:center;font-size:12px"><span class="badge">DATOS SIMULADOS</span> Horarios reales de uai.cl · '+(U.SYNC.modo==="firebase"?(U.SYNC.conectado?"conectado a la central":"sin conexión"):"modo local")+'</div>';
+  }
+  V.innerHTML=h;
+  var s1=document.getElementById("selServ");if(s1)s1.onchange=function(){pref.serv=this.value;pref.parada=0;lsSet("uai_pref",pref);pintar()};
+  var s2=document.getElementById("selPar");if(s2)s2.onchange=function(){pref.parada=+this.value;lsSet("uai_pref",pref);pintar()};
+  var s3=document.getElementById("selCam");if(s3)s3.onchange=function(){pref.caminata=+this.value;lsSet("uai_pref",pref);pintar()};
+  var bf=document.getElementById("btnFin");if(bf)bf.onclick=function(){viaje=null;lsSet("uai_viaje",null);pintar()};
+}
+
+/* ---------- lector de QR dentro de la app (opción extra; requiere HTTPS) ---------- */
+var stream=null,loop=null;
+function cerrar(){document.getElementById("scanner").style.display="none";if(stream)stream.getTracks().forEach(function(t){t.stop()});stream=null;clearInterval(loop)}
+document.getElementById("btnCerrar").onclick=cerrar;
+document.getElementById("btnScan").onclick=function(){
+  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){alert("Este navegador no permite usar la cámara aquí. Escanea el QR con la cámara del iPhone.");return}
+  function iniciar(){
+    navigator.mediaDevices.getUserMedia({video:{facingMode:"environment"}}).then(function(st){
+      stream=st;var v=document.getElementById("video");v.srcObject=st;v.play();document.getElementById("scanner").style.display="flex";
+      var cv=document.getElementById("cv"),ctx=cv.getContext("2d",{willReadFrequently:true});
+      loop=setInterval(function(){if(v.readyState<2)return;cv.width=v.videoWidth;cv.height=v.videoHeight;ctx.drawImage(v,0,0);
+        var img=ctx.getImageData(0,0,cv.width,cv.height),r=window.jsQR(img.data,cv.width,cv.height);
+        if(r&&r.data){cerrar();hacerCheckin(r.data)}},250);
+    }).catch(function(){alert("No se pudo abrir la cámara. Puedes escanear el QR con la cámara del iPhone.")});
+  }
+  if(window.jsQR)iniciar();else{var s=document.createElement("script");s.src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js";s.onload=iniciar;s.onerror=function(){alert("Sin internet para cargar el lector. Usa la cámara del iPhone.")};document.head.appendChild(s)}
+};
+U.SYNC.on("checkin",pintar);U.SYNC.on("demo",pintar);U.SYNC.on("estado",pintar);
+setInterval(pintar,5000);pintar();
+})();
+</script>
+</body>
+</html>
