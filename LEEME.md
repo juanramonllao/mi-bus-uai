@@ -53,7 +53,7 @@ El iPhone exige HTTPS para la cámara y para instalar la app. Dos opciones:
 
 **GitHub Pages**
 1. Crea un repositorio público `mi-bus-uai` en <https://github.com/new>.
-2. **Add file → Upload files** y arrastra todos los archivos de esta carpeta (incluida la carpeta `img`). **Commit changes**.
+2. **Add file → Upload files** y arrastra todos los archivos de esta carpeta. **Commit changes**.
 3. **Settings → Pages → Build and deployment → Deploy from a branch → main / (root) → Save**.
 4. En 1 a 2 minutos queda en `https://<tu-usuario>.github.io/mi-bus-uai/`.
 
