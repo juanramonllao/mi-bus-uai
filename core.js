@@ -16,7 +16,10 @@
   if (qs.get("dia")) diaForzado = +qs.get("dia");
   function ahora() { return new Date(Date.now() + offsetMs); }
   function minDelDia(d) { d = d || ahora(); return d.getHours() * 60 + d.getMinutes() + d.getSeconds() / 60 + d.getMilliseconds() / 60000; }
-  function diaSemana() { var w = ahora().getDay(); return diaForzado || (w === 0 ? 7 : w); } // 1=lun ... 7=dom
+  /* 1 = lunes ... 6 = sábado. Fin de semana = "modo ensayo": se usa el horario del lunes para poder practicar. */
+  function diaReal() { var w = ahora().getDay(); return w === 0 ? 7 : w; }
+  function ensayo() { return !diaForzado && diaReal() >= 6; }
+  function diaSemana() { return diaForzado || (ensayo() ? 1 : diaReal()); }
   function inicioDelDiaMs() { var d = ahora(); return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() - offsetMs; }
   function fmt(m) { m = Math.round(m); var h = Math.floor(m / 60) % 24, mm = ((m % 60) + 60) % 60; return String(h).padStart(2, "0") + ":" + String(mm).padStart(2, "0"); }
   function hash(a, b) { return (((a * 2654435761) ^ (b * 40503)) >>> 0) % 1000 / 1000; }
@@ -50,13 +53,13 @@
   /* ---------- demo: bus virtual en Grecia (subida) que parte cuando la central lo indica ----------
      Llega al paradero Av. Grecia / Tobalaba «lead» minutos después de partir y desde ahí avanza
      a velocidad ×«speed» hasta el campus, para que la demo dure pocos minutos. */
-  var demo = { start: 0, lead: 2, speed: 8 };
-  var K_DEMO = 2;                     // índice de la parada Av. Grecia / Tobalaba en GRE-S
+  var demo = { start: 0, lead: 2, speed: 8, serv: "GRE-S", k: 2 };
   function viajeDemo() {
     if (!demo.start) return null;
+    var serv = S[demo.serv] ? demo.serv : "GRE-S", k = demo.k == null ? 2 : demo.k;
     var dep = minDelDia(new Date(demo.start + offsetMs)), lead = demo.lead || 2, sp = demo.speed || 8;
-    var fStop = fracParada("GRE-S", K_DEMO), tStop = dep + lead, tArr = tStop + (1 - fStop) * S["GRE-S"].dur / sp;
-    return { id: "DEMO", serv: "GRE-S", dep: dep, occBase: 0.55, n: 1, demo: true, fStop: fStop, tStop: tStop, tArr: tArr };
+    var fStop = fracParada(serv, k), tStop = dep + lead, tArr = tStop + (1 - fStop) * S[serv].dur / sp;
+    return { id: "DEMO", serv: serv, k: k, dep: dep, occBase: 0.55, n: 1, demo: true, fStop: fStop, tStop: tStop, tArr: tArr };
   }
   function duracion(v) { return v.demo ? v.tArr - v.dep : S[v.serv].dur; }
   function todos() { var d = viajeDemo(); return d ? viajesHoy().concat([d]) : viajesHoy(); }
@@ -96,14 +99,14 @@
   function color(fr) { return fr < 0.6 ? "#2e9e5b" : fr <= 0.85 ? "#e3a21a" : "#d64545"; }
 
   /* Un check-in al bus «DEMO» del QR genérico va al bus virtual si está activo; si no, al bus de
-     Grecia (subida) que esté por llegar a Av. Grecia / Tobalaba. */
+     recorrido de la demo (por defecto Grecia → UAI) que esté por llegar a su paradero. */
   function resolverBus(id) {
     if (id !== "DEMO") return id;
     if (viajeDemo()) return "DEMO";
     var m = minDelDia(), mejor = null, dmin = 1e9;
     viajesHoy().forEach(function (v) {
-      if (v.serv !== "GRE-S") return;
-      var d = Math.abs(llegadaA(v, 2) - m);
+      if (v.serv !== (demo.serv || "GRE-S")) return;
+      var d = Math.abs(llegadaA(v, demo.k == null ? 2 : demo.k) - m);
       if (fraccion(v, m) <= 1 && d < dmin) { dmin = d; mejor = v; }
     });
     return mejor ? mejor.id : "GRE-S-DEMO";
@@ -141,7 +144,7 @@
           firebase.initializeApp(cfg); db = firebase.database(); SYNC.modo = "firebase";
           db.ref(".info/connected").on("value", function (s) { SYNC.conectado = !!s.val(); emitir("estado", SYNC); });
           db.ref("checkins").orderByChild("t").startAt(inicioDelDiaMs()).on("child_added", function (s) { var c = s.val(); c.key = s.key; agregarCheckin(c); });
-          db.ref("demo").on("value", function (s) { demo = s.val() || { start: 0, lead: 2, speed: 8 }; emitir("demo", demo); });
+          db.ref("demo").on("value", function (s) { demo = s.val() || { start: 0, lead: 2, speed: 8, serv: "GRE-S", k: 2 }; emitir("demo", demo); });
         } catch (e) { console.error(e); SYNC.modo = "local"; cargarLocal(); }
       }, function () { SYNC.modo = "local"; cargarLocal(); });
     }, function () { SYNC.modo = "local"; cargarLocal(); });
@@ -170,7 +173,7 @@
   else cargarLocal();
 
   window.UAI = {
-    CAP: CAP, S: S, MAPAS: MAPAS, ahora: ahora, minDelDia: minDelDia, diaSemana: diaSemana, fmt: fmt,
+    CAP: CAP, S: S, MAPAS: MAPAS, ahora: ahora, minDelDia: minDelDia, diaSemana: diaSemana, ensayo: ensayo, fmt: fmt,
     viajesHoy: viajesHoy, todos: todos, enRuta: enRuta, fraccion: fraccion, puntoEn: puntoEn, duracion: duracion,
     llegadaA: llegadaA, fracParada: fracParada, ocupacion: ocupacion, color: color, resolverBus: resolverBus,
     offsetMs: offsetMs, checkins: function () { return checkins; }, demo: function () { return demo; }, viajeDemo: viajeDemo, SYNC: SYNC, dev: dev

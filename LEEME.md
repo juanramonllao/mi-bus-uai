@@ -65,28 +65,33 @@ Cada vez que cambies `config.js` u otro archivo, vuelve a subirlo.
 
 ## Paso 3 · Preparar la demo
 
-1. En el computador abre `https://…/qr.html`, revisa que la dirección termine en `app.html` y **imprime** las dos hojas: el QR del bus (va en la espalda del conductor) y el QR de la app.
+1. En el computador abre `https://…/qr.html` y **imprime** el QR del bus (va en la espalda del conductor). Para instalar la app basta compartir el enlace de `app.html`.
 2. En el computador de la presentación abre `https://…/central.html` y pon pantalla completa (F11).
 3. En cada iPhone: escanea el QR de la app con la cámara → se abre Safari → **Compartir → Agregar a pantalla de inicio**. Ábrela desde el ícono y elige recorrido **Grecia → UAI**, paradero **Av. Grecia / Tobalaba** y minutos caminando.
 4. Ensaya una vez: con el iPhone, escanea el QR del bus con la **cámara normal** del iPhone y toca el aviso. La app muestra «Check-in listo» y en la central aparece en «Check-ins en vivo» con un destello en el bus.
 
-### Teclas de la central
+### Panel «Bus DEMO» de la central
 
-| Tecla | Acción |
-|---|---|
-| `1` `2` `3` `4` | Minutos que tardará el bus DEMO en llegar a Av. Grecia / Tobalaba: 1, 2, 3 o 5. Elígelo **antes** de apretar `D` (por defecto, 2). |
-| `D` | Parte el bus **DEMO** desde Metro Grecia en este momento (borde negro). Llega al paradero en los minutos elegidos y desde ahí va 8 veces más rápido hasta el campus (unos 2 min). |
-| `C` | Check-in de respaldo al bus DEMO (si falla internet o el iPhone). |
-| `X` | Termina la demo. |
+En la columna derecha de la central:
 
-En el iPhone de la demo, pon **Minutos caminando = 1 o 2**: así, al apretar `D`, la app muestra «🔔 Sal ahora» en vez de «no alcanzas».
+1. Elige el **recorrido** (Grecia, Dominicos o F. Castillo Velasco) y el **paradero** donde espera el alumno.
+2. Elige en cuántos minutos llega el bus a ese paradero (1, 2, 3 o 5).
+3. **▶ Partir bus**: el bus DEMO (borde negro) parte desde el inicio del recorrido. Llega al paradero en los minutos elegidos y desde ahí va 8 veces más rápido hasta el campus (unos 2 min).
+4. **Check-in de respaldo**: suma un check-in al bus DEMO si falla internet o el iPhone.
+5. **■ Terminar**: saca el bus DEMO del mapa.
 
-Para mirar el mapa a otra hora: `central.html?hora=07:50` (y `&dia=3` para el día: 1 = lunes … 6 = sábado). Úsalo solo para mirar: cada página fija su propio reloj al abrirse, así que para la demo sincronizada abran todo sin `?hora`.
+Teclas equivalentes: `D` partir, `C` check-in de respaldo, `X` terminar.
+
+En el iPhone del alumno elige **el mismo recorrido y paradero** que en la central, y **Minutos caminando = 1 o 2**: así la app muestra «🔔 Sal ahora» en vez de «no alcanzas».
+
+**Fin de semana (modo ensayo).** Sábado y domingo no hay buses en Peñalolén, así que la central y la app muestran el horario del **lunes** (aparece un aviso amarillo). El bus DEMO funciona a cualquier hora.
+
+Para mirar el mapa a otra hora: `central.html?hora=07:50` (y `&dia=3` para el día: 1 = lunes … 6 = sábado). El bus DEMO sigue sincronizado con la app aunque la central use `?hora`.
 
 ## Guion de la demo (unos 2 minutos)
 
 1. **Casa.** Un alumno mira la app: «Tu bus llega al paradero en X min… sal de casa en Y min». Cuando quedan 5 a 7 minutos aparece «Sal ahora».
-2. **Bus.** En la central apretamos `D`. Otro integrante es el conductor, con el QR pegado en la espalda, y «maneja» hacia el paradero mientras el bus DEMO avanza en el mapa.
+2. **Bus.** En la central tocamos **▶ Partir bus** (o la tecla `D`). Otro integrante es el conductor, con el QR pegado en la espalda, y «maneja» hacia el paradero mientras el bus DEMO avanza en el mapa.
 3. **Paradero.** El alumno «sube» y escanea el QR con la cámara del iPhone. La central suena, el bus DEMO destella y pierde un cupo; la app muestra «Check-in listo · llegas a las HH:MM».
 4. **Llegada.** El bus llega al campus y la app muestra «Llegaste a la UAI» con la promesa: «Sabes cuándo llega tu bus y si hay cupo, antes de salir.»
 
