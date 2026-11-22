@@ -32,6 +32,7 @@ main{flex:1;display:grid;grid-template-columns:1.15fr 1fr 330px;gap:12px;padding
 #feed .h{font:600 12px ui-monospace,Consolas,monospace;color:var(--mut)}
 .teclas{font-size:11px;color:var(--mut);margin-top:8px;line-height:1.6}
 .vacio{color:var(--mut);font-size:12px;padding:8px}
+.occ{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--ink)}
 .ensayo{background:#fff1cc;color:#7a5600;font-size:12px;font-weight:700;padding:3px 10px;border-radius:99px}
 @media(max-width:1100px){main{grid-template-columns:1fr}.mapa{height:60vh}}
 </style>
@@ -46,7 +47,7 @@ main{flex:1;display:grid;grid-template-columns:1.15fr 1fr 330px;gap:12px;padding
 </header>
 <main>
   <section class="card"><h2><span>Campus Peñalolén</span><span id="kPEN"></span></h2><div class="mapa"><svg id="mapPEN"></svg></div>
-    <div class="leyenda"><span><i class="dot" style="background:#2b5fd9"></i>Grecia</span><span><i class="dot" style="background:#d97b1e"></i>Dominicos</span><span><i class="dot" style="background:#8a3fb5"></i>F. Castillo Velasco</span><span>Círculo = bus · número = cupos libres</span></div></section>
+    <div class="leyenda"><span><i class="dot" style="background:#2b5fd9"></i>Grecia</span><span><i class="dot" style="background:#d97b1e"></i>Dominicos</span><span><i class="dot" style="background:#8a3fb5"></i>F. Castillo Velasco</span><span>Círculo = bus (color = ocupación) · número = cupos libres</span></div></section>
   <section class="card"><h2><span>Campus Viña del Mar</span><span id="kVIN"></span></h2><div class="mapa"><svg id="mapVIN"></svg></div>
     <div class="leyenda"><span><i class="dot" style="background:#0f8b8d"></i>Plaza Parroquia</span><span><i class="dot" style="background:#c2185b"></i>13 Norte</span><span><i class="dot" style="background:#5d6d7e"></i>Bajada a Plaza Sucre</span></div></section>
   <section class="card">
@@ -57,6 +58,8 @@ main{flex:1;display:grid;grid-template-columns:1.15fr 1fr 330px;gap:12px;padding
       <div class="kpi">Saturados (&gt;85%)<b id="kSat">0</b></div>
       <div class="kpi">Check-ins hoy<b id="kChk">0</b></div>
     </div>
+    <h2 style="margin-top:12px"><span>Ocupación de cada bus (máx. 44)</span></h2>
+    <div class="occ"><span><i class="dot" style="background:#2e9e5b"></i>Verde: hasta 26 pasajeros</span><span><i class="dot" style="background:#e3a21a"></i>Amarillo: 27 a 37</span><span><i class="dot" style="background:#d64545"></i>Rojo: 38 a 44 (casi lleno o lleno)</span></div>
     <h2 style="margin-top:12px"><span>Check-ins en vivo</span></h2>
     <ul id="feed"><li class="vacio">Aún no hay check-ins hoy.</li></ul>
     <div class="teclas"><span id="leyendaSup"></span></div>

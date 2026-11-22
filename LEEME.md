@@ -78,7 +78,7 @@ Cada vez que cambies `config.js` u otro archivo, vuelve a subirlo.
 - **Fin de semana (modo ensayo).** Sábado y domingo no hay buses en Peñalolén, así que la central y la app usan el horario del **lunes** (aparece un aviso amarillo).
 - **Fuera de horario** (antes de las 07:10 o después de las 21:00) no hay buses en ruta; la app muestra a qué hora pasa el primero del próximo día hábil.
 
-Para mirar el mapa a otra hora: `central.html?hora=07:50` (y `&dia=3` para el día: 1 = lunes … 6 = sábado).
+Para mirar el mapa en otro momento: `central.html?fecha=2026-11-23&hora=07:50` (también sirve en `app.html`). Así se sacaron las capturas del PPT.
 
 ## Guion de la demo (unos 2 minutos)
 

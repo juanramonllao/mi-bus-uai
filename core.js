@@ -8,9 +8,10 @@
   /* ---------- reloj (hora real del computador, con override opcional ?hora=HH:MM&dia=N) ---------- */
   var qs = new URLSearchParams(location.search);
   var offsetMs = 0, diaForzado = null;
-  if (qs.get("hora")) {
-    var p = qs.get("hora").split(":"), d = new Date();
-    var objetivo = new Date(d.getFullYear(), d.getMonth(), d.getDate(), +p[0], +(p[1] || 0), 0);
+  if (qs.get("hora") || qs.get("fecha")) {          // ?fecha=AAAA-MM-DD&hora=HH:MM para ensayar otro día u hora
+    var d = new Date(), p = (qs.get("hora") || (d.getHours() + ":" + d.getMinutes())).split(":");
+    var f = qs.get("fecha") ? qs.get("fecha").split("-") : [d.getFullYear(), d.getMonth() + 1, d.getDate()];
+    var objetivo = new Date(+f[0], +f[1] - 1, +f[2], +p[0], +(p[1] || 0), 0);
     offsetMs = objetivo - d;
   }
   if (qs.get("dia")) diaForzado = +qs.get("dia");
