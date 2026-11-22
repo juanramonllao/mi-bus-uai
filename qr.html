@@ -23,23 +23,17 @@ button{font:inherit;padding:10px 16px;border:0;border-radius:10px;background:#1f
   <h2>QR del bus</h2>
   <p class="nota">Abre esta página <b>desde la dirección publicada</b> (GitHub Pages o Netlify), no desde el archivo local: el QR lleva la dirección de la app. Revisa la dirección de abajo antes de imprimir.</p>
   <label>Dirección de la app</label><input id="base">
-  <label>Bus del QR del conductor</label>
-  <select id="bus">
-    <option value="DEMO">Bus DEMO (recomendado: el check-in va al bus que partió la central)</option>
-    <option value="GRE-S-1135-1">Grecia → UAI, salida 11:35</option>
-    <option value="GRE-S-1215-1">Grecia → UAI, salida 12:15</option>
-  </select>
   <button onclick="window.print()">Imprimir</button>
 </div>
-<div class="hoja"><h1>🚌 Bus UAI</h1><div class="sub">Escanea con la cámara del iPhone al subir</div><div class="qr" id="qr1"></div><div class="url" id="u1"></div></div>
+<div class="hoja"><h1>🚌 Bus UAI</h1><div class="sub">Escanea con la cámara del iPhone al subir: el check-in va al próximo bus de tu paradero</div><div class="qr" id="qr1"></div><div class="url" id="u1"></div></div>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
 <script>
-var base=document.getElementById("base"),bus=document.getElementById("bus");
+var base=document.getElementById("base"),BUS="DEMO";   // código fijo: es el mismo QR que ya imprimieron
 base.value=location.protocol==="file:"?"https://juanramonllao.github.io/mi-bus-uai/app.html":location.href.replace(/qr\.html.*$/,"app.html");
 function qr(el,txt){var q=qrcode(0,"M");q.addData(txt);q.make();document.getElementById(el).innerHTML=q.createImgTag(10,8)}
-function pintar(){var b=base.value.trim(),u=b+(b.indexOf("?")>=0?"&":"?")+"checkin="+encodeURIComponent(bus.value);
+function pintar(){var b=base.value.trim(),u=b+(b.indexOf("?")>=0?"&":"?")+"checkin="+BUS;
   qr("qr1",u);document.getElementById("u1").textContent=u}
-base.oninput=bus.onchange=pintar;pintar();
+base.oninput=pintar;pintar();
 </script>
 </body>
 </html>

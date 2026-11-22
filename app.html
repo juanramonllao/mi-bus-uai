@@ -52,7 +52,7 @@ select{font:inherit;width:100%;padding:10px;border-radius:10px;border:1px solid 
 <script src="config.js?v=3"></script>
 <script src="horarios.js?v=2"></script>
 <script src="rutas.js?v=3"></script>
-<script src="core.js?v=5"></script>
+<script src="core.js?v=6"></script>
 <script>
 (function(){
 "use strict";
@@ -65,11 +65,25 @@ if(viaje&&new Date(viaje.t).toDateString()!==new Date().toDateString())viaje=nul
 var MARGEN=2;
 
 /* ---------- check-in desde la URL del QR (cámara nativa del iPhone) ---------- */
+var aviso=null;                                  // mensaje cuando no se pudo hacer el check-in
+/* El QR va pegado en la espalda del conductor. El check-in va al próximo bus del recorrido y
+   paradero que el alumno eligió en la app, y se rechaza si ese bus ya lleva 44 pasajeros. */
 function hacerCheckin(raw){
   var id=raw;try{var u=new URL(raw);id=u.searchParams.get("checkin")||raw}catch(e){}
   id=String(id).trim();if(!id)return;
-  var real=U.SYNC.checkin(id);
-  viaje={bus:real,t:Date.now()};lsSet("uai_viaje",viaje);
+  var bus=null,m=U.minDelDia(),t=U.todos();
+  for(var i=0;i<t.length;i++)if(t[i].id===id)bus=t[i];         // QR con un bus específico
+  if(!bus){var lst=U.proximosEn(pref.serv,pref.parada,m);bus=lst.length?lst[0].v:null}
+  if(!bus){aviso={tipo:"sin",txt:"No hay buses de "+S[pref.serv].nombre+" en este momento, así que no se registró el check-in."};pintar();return}
+  if(viaje&&viaje.bus===bus.id){pintar();return}               // ya estaba arriba de este bus
+  var o=U.ocupacion(bus,Math.max(m,U.llegadaA(bus,pref.parada)));
+  if(o.lleno){
+    var sig=U.proximosEn(pref.serv,pref.parada,m).filter(function(x){return x.v.id!==bus.id})[0];
+    aviso={tipo:"lleno",txt:"Bus lleno ("+U.CAP+" de "+U.CAP+" pasajeros): no se registró el check-in. No se permite ir de pie."+(sig?" El siguiente llega a las "+U.fmt(sig.a)+" ("+Math.max(0,Math.ceil(sig.a-m))+" min).":"")};
+    pintar();return;
+  }
+  U.SYNC.checkin(bus.id);aviso=null;
+  viaje={bus:bus.id,t:Date.now()};lsSet("uai_viaje",viaje);
   if(navigator.vibrate)navigator.vibrate(120);
   pintar();
 }
@@ -82,11 +96,7 @@ if(qs.get("checkin")){
 
 function viajeActual(){if(!viaje)return null;var t=U.todos();for(var i=0;i<t.length;i++)if(t[i].id===viaje.bus)return t[i];return null}
 function nombreParada(serv,k){return S[serv].paradas[k]}
-function proximos(){
-  var m=U.minDelDia(),out=[];
-  U.todos().forEach(function(v){if(v.serv!==pref.serv)return;var a=U.llegadaA(v,pref.parada);if(a>=m-0.3)out.push({v:v,a:a})});
-  out.sort(function(x,y){return x.a-y.a});return out;
-}
+function proximos(){return U.proximosEn(pref.serv,pref.parada,U.minDelDia()-0.7)}
 function opciones(){
   var h='';Object.keys(S).forEach(function(k){var s=S[k];if(s.dir!=="S")return;h+='<option value="'+k+'"'+(k===pref.serv?" selected":"")+'>'+s.nombre+'</option>'});return h;
 }
@@ -106,23 +116,24 @@ function pintar(){
       h+='<div class="card"><div class="mut">Check-in listo ✓ · vas en el bus</div><div class="big">'+Math.max(1,Math.ceil(llega-m))+' min</div>'+
          '<div class="row"><span>Llegas a las <b>'+U.fmt(llega)+'</b></span><span class="pill" style="background:'+U.color(o.frac)+'">'+o.cupos+' cupos</span></div>'+
          '<div class="barra"><i style="width:'+Math.round(100*Math.max(0,Math.min(1,f)))+'%"></i></div>'+
-         '<div class="mut">Próxima parada: '+s.paradas[k]+'</div><div class="mut">'+(va.demo?"Bus DEMO · "+s.nombre:s.nombre+" · salida "+U.fmt(va.dep))+'</div></div>'+
+         '<div class="mut">Próxima parada: '+s.paradas[k]+'</div><div class="mut">'+(s.nombre+" · salida "+U.fmt(va.dep))+'</div></div>'+
          '<div class="card mut">La central de la UAI ya ve tu check-in: el bus suma un pasajero y se actualizan los cupos para los que esperan en los próximos paraderos.</div>';
     }
   }else{
     var lst=proximos(),p=lst[0];
     h+='<div class="card"><div class="mut">'+S[pref.serv].nombre+' · '+nombreParada(pref.serv,pref.parada)+'</div>';
-    if(!p){h+='<h2>No quedan buses hoy en este recorrido</h2><div class="mut">Revisa el horario de mañana en uai.cl.</div></div>'}
+    if(!p){var pm=U.primeroManana(pref.serv,pref.parada);h+='<h2>No quedan buses hoy en este recorrido</h2><div class="mut">'+(pm!=null?"El primer bus del próximo día hábil pasa por tu paradero a las <b>"+U.fmt(pm)+"</b>.":"Revisa el horario en uai.cl.")+'</div></div>'}
     else{
-      var min=Math.max(0,Math.ceil(p.a-m)),o2=U.ocupacion(p.v,p.a);
+      var min=Math.max(0,Math.ceil(p.a-m)),o2=U.ocupacion(p.v,Math.max(m,p.a));
       h+='<div>Tu bus llega al paradero en</div><div class="big">'+min+' min</div>'+
-         '<div class="row"><span class="pill" style="background:'+U.color(o2.frac)+'">'+o2.cupos+' cupos</span><span class="mut">llega '+U.fmt(p.a)+(p.v.demo?" · bus DEMO":" · sale "+U.fmt(p.v.dep))+'</span></div>';
+         '<div class="row"><span class="pill" style="background:'+U.color(o2.frac)+'">'+o2.cupos+' cupos</span><span class="mut">llega '+U.fmt(p.a)+" · sale "+U.fmt(p.v.dep)+'</span></div>';
       var c=pref.caminata;
-      if(min>c+MARGEN)h+='<div class="alerta a-ok">Tienes tiempo: sal de casa en '+(min-c-MARGEN)+' min</div>';
+      if(o2.lleno){var q2=lst[1];h+='<div class="alerta a-tarde">🚫 Este bus viene lleno ('+U.CAP+' de '+U.CAP+').'+(q2?' El siguiente llega en '+Math.ceil(q2.a-m)+' min.':'')+'</div>'}
+      else if(min>c+MARGEN)h+='<div class="alerta a-ok">Tienes tiempo: sal de casa en '+(min-c-MARGEN)+' min</div>';
       else if(min>=c)h+='<div class="alerta a-ya">🔔 Sal ahora: caminas '+c+' min y llegas antes que el bus</div>';
       else{var q=lst[1];h+='<div class="alerta a-tarde">Si sales ahora no alcanzas este bus.'+(q?' El siguiente llega en '+Math.ceil(q.a-m)+' min.':'')+'</div>'}
       h+='</div>';
-      if(lst.length>1){h+='<div class="card"><div class="mut">Siguientes buses</div><div class="lista">';lst.slice(1,4).forEach(function(x){var ox=U.ocupacion(x.v,x.a);h+='<div><span>'+U.fmt(x.a)+'</span><span class="mut">'+ox.cupos+' cupos</span></div>'});h+='</div></div>'}
+      if(lst.length>1){h+='<div class="card"><div class="mut">Siguientes buses</div><div class="lista">';lst.slice(1,4).forEach(function(x){var ox=U.ocupacion(x.v,Math.max(m,x.a));h+='<div><span>'+U.fmt(x.a)+'</span><span class="mut">'+(ox.lleno?"lleno":ox.cupos+' cupos')+'</span></div>'});h+='</div></div>'}
     }
     h+='<div class="card"><div class="mut">Recorrido</div><select id="selServ">'+opciones()+'</select><div class="mut">Tu paradero</div><select id="selPar">'+paradasDe(pref.serv)+'</select>'+
        '<div class="mut">Minutos caminando desde tu casa</div><select id="selCam">'+[1,2,3,5,7,10,15].map(function(n){return'<option'+(n===pref.caminata?" selected":"")+'>'+n+'</option>'}).join("")+'</select></div>';
@@ -131,7 +142,9 @@ function pintar(){
     if(U.ensayo())h+='<div class="card mut" style="background:#fff1cc;color:#7a5600">Fin de semana: se muestra el horario del lunes para ensayar.</div>';
     h+='<div class="mut" style="text-align:center;font-size:12px"><span class="badge">DATOS SIMULADOS</span> Horarios reales de uai.cl · '+(U.SYNC.modo==="firebase"?(U.SYNC.conectado?"conectado a la central":"sin conexión"):"modo local")+'</div>';
   }
+  if(aviso)h='<div class="card" style="background:'+(aviso.tipo==="lleno"?"#fde8e8;color:#9b2c2c":"#fff1cc;color:#7a5600")+';font-weight:700">'+(aviso.tipo==="lleno"?"🚫 ":"ℹ️ ")+aviso.txt+'<div style="margin-top:10px"><button class="sec" id="btnAviso">Entendido</button></div></div>'+h;
   V.innerHTML=h;
+  var ba=document.getElementById("btnAviso");if(ba)ba.onclick=function(){aviso=null;pintar()};
   var s1=document.getElementById("selServ");if(s1)s1.onchange=function(){pref.serv=this.value;pref.parada=0;lsSet("uai_pref",pref);pintar()};
   var s2=document.getElementById("selPar");if(s2)s2.onchange=function(){pref.parada=+this.value;lsSet("uai_pref",pref);pintar()};
   var s3=document.getElementById("selCam");if(s3)s3.onchange=function(){pref.caminata=+this.value;lsSet("uai_pref",pref);pintar()};
@@ -155,7 +168,7 @@ document.getElementById("btnScan").onclick=function(){
   }
   if(window.jsQR)iniciar();else{var s=document.createElement("script");s.src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js";s.onload=iniciar;s.onerror=function(){alert("Sin internet para cargar el lector. Usa la cámara del iPhone.")};document.head.appendChild(s)}
 };
-U.SYNC.on("checkin",pintar);U.SYNC.on("demo",pintar);U.SYNC.on("estado",pintar);
+U.SYNC.on("checkin",pintar);U.SYNC.on("estado",pintar);
 setInterval(pintar,5000);pintar();
 })();
 </script>

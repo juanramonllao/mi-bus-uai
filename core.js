@@ -50,27 +50,11 @@
     cacheDia = dia; cacheViajes = out; return out;
   }
 
-  /* ---------- demo: bus virtual en Grecia (subida) que parte cuando la central lo indica ----------
-     Llega al paradero Av. Grecia / Tobalaba «lead» minutos después de partir y desde ahí avanza
-     a velocidad ×«speed» hasta el campus, para que la demo dure pocos minutos. */
-  var demo = { start: 0, lead: 2, speed: 8, serv: "GRE-S", k: 2 };
-  function viajeDemo() {
-    if (!demo.start) return null;
-    var serv = S[demo.serv] ? demo.serv : "GRE-S", k = demo.k == null ? 2 : demo.k;
-    var dep = minDelDia(new Date(demo.start + offsetMs)), lead = demo.lead || 2, sp = demo.speed || 8;
-    var fStop = fracParada(serv, k), tStop = dep + lead, tArr = tStop + (1 - fStop) * S[serv].dur / sp;
-    return { id: "DEMO", serv: serv, k: k, dep: dep, occBase: 0.55, n: 1, demo: true, fStop: fStop, tStop: tStop, tArr: tArr };
-  }
-  function duracion(v) { return v.demo ? v.tArr - v.dep : S[v.serv].dur; }
-  function todos() { var d = viajeDemo(); return d ? viajesHoy().concat([d]) : viajesHoy(); }
+  function duracion(v) { return S[v.serv].dur; }
+  function todos() { return viajesHoy(); }
 
   /* ---------- posición sobre el trazado ---------- */
-  function fraccion(v, m) {
-    if (!v.demo) return (m - v.dep) / duracion(v);
-    if (m < v.dep) return -1;
-    if (m <= v.tStop) return v.fStop * (m - v.dep) / (v.tStop - v.dep);
-    return v.fStop + (1 - v.fStop) * (m - v.tStop) / (v.tArr - v.tStop);
-  }
+  function fraccion(v, m) { return (m - v.dep) / duracion(v); }
   function puntoEn(serv, f) {
     var s = S[serv], tot = s.cum[s.cum.length - 1], d = Math.max(0, Math.min(1, f)) * tot;
     for (var i = 1; i < s.px.length; i++) {
@@ -79,12 +63,7 @@
     return s.px[s.px.length - 1];
   }
   function fracParada(serv, k) { var s = S[serv]; return s.cum[s.si[k]] / s.cum[s.cum.length - 1]; }
-  function llegadaA(v, k) {
-    var f = fracParada(v.serv, k);
-    if (!v.demo) return v.dep + f * duracion(v);
-    if (f <= v.fStop) return v.dep + (v.tStop - v.dep) * f / v.fStop;
-    return v.tStop + (v.tArr - v.tStop) * (f - v.fStop) / (1 - v.fStop);
-  }
+  function llegadaA(v, k) { return v.dep + fracParada(v.serv, k) * duracion(v); }
   function enRuta(m) { m = m == null ? minDelDia() : m; return todos().filter(function (v) { var f = fraccion(v, m); return f >= 0 && f <= 1; }); }
 
   /* ---------- ocupación: base simulada + check-ins reales ---------- */
@@ -93,27 +72,29 @@
   function ocupacion(v, m) {
     var f = Math.max(0, Math.min(1, fraccion(v, m == null ? minDelDia() : m)));
     var base = S[v.serv].dir === "S" ? v.occBase * (0.3 + 0.7 * Math.min(1, f * 1.4)) : v.occBase * (1 - 0.6 * f);
-    var pas = Math.min(CAP, Math.round(base * CAP) + checkinsDe(v.id));
-    return { pasajeros: pas, cupos: CAP - pas, frac: pas / CAP };
+    var pas = Math.min(CAP, Math.round(base * CAP) + checkinsDe(v.id));   // nunca más de 44
+    return { pasajeros: pas, cupos: CAP - pas, frac: pas / CAP, lleno: pas >= CAP };
+  }
+  /* Buses de un recorrido que aún no pasan por el paradero k, ordenados por hora de llegada. */
+  function proximosEn(serv, k, m) {
+    m = m == null ? minDelDia() : m;
+    return viajesHoy().filter(function (v) { return v.serv === serv && llegadaA(v, k) >= m - 1; })
+      .map(function (v) { return { v: v, a: llegadaA(v, k) }; })
+      .sort(function (x, y) { return x.a - y.a; });
+  }
+  /* Primer bus del día siguiente en ese paradero (para mostrarlo cuando ya no quedan buses hoy). */
+  function primeroManana(serv, k) {
+    var s = S[serv], dia = diaSemana(), sig = dia >= 5 ? 1 : dia + 1;     // vie/sáb/dom -> lunes
+    var h = s.campus === "PEN" ? H[s.ruta][s.dir] : (H[s.ruta][sig] || "");
+    var tok = (h.match(/\d\d:\d\d/) || [])[0];
+    if (!tok) return null;
+    var dep = +tok.slice(0, 2) * 60 + +tok.slice(3, 5);
+    return dep + fracParada(serv, k) * s.dur;
   }
   function color(fr) { return fr < 0.6 ? "#2e9e5b" : fr <= 0.85 ? "#e3a21a" : "#d64545"; }
 
-  /* Un check-in al bus «DEMO» del QR genérico va al bus virtual si está activo; si no, al bus de
-     recorrido de la demo (por defecto Grecia → UAI) que esté por llegar a su paradero. */
-  function resolverBus(id) {
-    if (id !== "DEMO") return id;
-    if (viajeDemo()) return "DEMO";
-    var m = minDelDia(), mejor = null, dmin = 1e9;
-    viajesHoy().forEach(function (v) {
-      if (v.serv !== (demo.serv || "GRE-S")) return;
-      var d = Math.abs(llegadaA(v, demo.k == null ? 2 : demo.k) - m);
-      if (fraccion(v, m) <= 1 && d < dmin) { dmin = d; mejor = v; }
-    });
-    return mejor ? mejor.id : "GRE-S-DEMO";
-  }
-
   /* ---------- sincronización: Firebase Realtime Database o modo local ---------- */
-  var oyentes = { checkin: [], demo: [], estado: [] };
+  var oyentes = { checkin: [], estado: [] };
   function emitir(tipo, x) { oyentes[tipo].forEach(function (f) { f(x); }); }
   var SYNC = { modo: "local", conectado: false };
   var bc = ("BroadcastChannel" in window) ? new BroadcastChannel("uai-buses") : null;
@@ -126,11 +107,7 @@
   }
   function cargarLocal() {
     try { (JSON.parse(localStorage.getItem("uai_checkins") || "[]")).forEach(agregarCheckin); } catch (e) {}
-    try { var d = JSON.parse(localStorage.getItem("uai_demo") || "null"); if (d) { demo = d; emitir("demo", demo); } } catch (e) {}
-    if (bc) bc.onmessage = function (e) {
-      if (e.data.tipo === "checkin") agregarCheckin(e.data.c);
-      if (e.data.tipo === "demo") { demo = e.data.demo; emitir("demo", demo); }
-    };
+    if (bc) bc.onmessage = function (e) { if (e.data.tipo === "checkin") agregarCheckin(e.data.c); };
     SYNC.conectado = true; emitir("estado", SYNC);
   }
   function guardarLocal() { try { localStorage.setItem("uai_checkins", JSON.stringify(checkins.slice(-500))); } catch (e) {} }
@@ -144,29 +121,22 @@
           firebase.initializeApp(cfg); db = firebase.database(); SYNC.modo = "firebase";
           db.ref(".info/connected").on("value", function (s) { SYNC.conectado = !!s.val(); emitir("estado", SYNC); });
           db.ref("checkins").orderByChild("t").startAt(inicioDelDiaMs()).on("child_added", function (s) { var c = s.val(); c.key = s.key; agregarCheckin(c); });
-          db.ref("demo").on("value", function (s) { demo = s.val() || { start: 0, lead: 2, speed: 8, serv: "GRE-S", k: 2 }; emitir("demo", demo); });
         } catch (e) { console.error(e); SYNC.modo = "local"; cargarLocal(); }
       }, function () { SYNC.modo = "local"; cargarLocal(); });
     }, function () { SYNC.modo = "local"; cargarLocal(); });
   }
   function cargarScript(src, ok, err) { var s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = err; document.head.appendChild(s); }
 
-  SYNC.checkin = function (busId) {
-    var id = resolverBus(busId);
+  /* Registra un check-in en un bus concreto (la app decide a qué bus y revisa que no esté lleno). */
+  SYNC.checkin = function (id) {
     var c = { bus: id, t: Date.now(), dev: dev };
     if (db) { db.ref("checkins").push({ bus: id, t: firebase.database.ServerValue.TIMESTAMP, dev: dev }); }
-    else { c.key = dev + "-" + c.t; agregarCheckin(c); guardarLocal(); if (bc) bc.postMessage({ tipo: "checkin", c: c }); }
+    else { c.key = dev + "-" + c.t + "-" + Math.random().toString(36).slice(2, 6); agregarCheckin(c); guardarLocal(); if (bc) bc.postMessage({ tipo: "checkin", c: c }); }
     return id;
-  };
-  SYNC.setDemo = function (d) {
-    demo = d;
-    if (db) db.ref("demo").set(d);
-    else { try { localStorage.setItem("uai_demo", JSON.stringify(d)); } catch (e) {} if (bc) bc.postMessage({ tipo: "demo", demo: d }); emitir("demo", d); }
   };
   SYNC.on = function (tipo, f) {
     oyentes[tipo].push(f);
     if (tipo === "estado") f(SYNC);            // entrega el estado actual a quien se suscribe tarde
-    if (tipo === "demo" && demo.start) f(demo);
   };
 
   if (window.FIREBASE_CONFIG && window.FIREBASE_CONFIG.databaseURL) iniciarFirebase(window.FIREBASE_CONFIG);
@@ -175,7 +145,7 @@
   window.UAI = {
     CAP: CAP, S: S, MAPAS: MAPAS, ahora: ahora, minDelDia: minDelDia, diaSemana: diaSemana, ensayo: ensayo, fmt: fmt,
     viajesHoy: viajesHoy, todos: todos, enRuta: enRuta, fraccion: fraccion, puntoEn: puntoEn, duracion: duracion,
-    llegadaA: llegadaA, fracParada: fracParada, ocupacion: ocupacion, color: color, resolverBus: resolverBus,
-    offsetMs: offsetMs, checkins: function () { return checkins; }, demo: function () { return demo; }, viajeDemo: viajeDemo, SYNC: SYNC, dev: dev
+    llegadaA: llegadaA, fracParada: fracParada, ocupacion: ocupacion, color: color, proximosEn: proximosEn, primeroManana: primeroManana,
+    checkinsDe: checkinsDe, offsetMs: offsetMs, checkins: function () { return checkins; }, SYNC: SYNC, dev: dev
   };
 })();

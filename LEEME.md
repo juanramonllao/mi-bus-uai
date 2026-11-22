@@ -70,32 +70,26 @@ Cada vez que cambies `config.js` u otro archivo, vuelve a subirlo.
 3. En cada iPhone: escanea el QR de la app con la cámara → se abre Safari → **Compartir → Agregar a pantalla de inicio**. Ábrela desde el ícono y elige recorrido **Grecia → UAI**, paradero **Av. Grecia / Tobalaba** y minutos caminando.
 4. Ensaya una vez: con el iPhone, escanea el QR del bus con la **cámara normal** del iPhone y toca el aviso. La app muestra «Check-in listo» y en la central aparece en «Check-ins en vivo» con un destello en el bus.
 
-### Panel «Bus DEMO» de la central
+### Cómo funciona durante la demo
 
-En la columna derecha de la central:
+- **La central no tiene botones.** Solo muestra la situación del momento: todos los buses de los dos campus se mueven solos según la hora del computador y el horario oficial de uai.cl, con sus cupos y los check-ins en vivo.
+- **El QR del conductor** abre la app con `?checkin=DEMO`. El check-in va al **próximo bus del recorrido y paradero que el alumno eligió en la app** (Grecia, Dominicos o F. Castillo Velasco).
+- **Capacidad máxima: 44 pasajeros por bus.** Si ese bus ya va lleno, la app no registra el check-in, avisa «Bus lleno · no se permite ir de pie» y muestra cuándo llega el siguiente. La app también avisa antes de salir de casa si el próximo bus viene lleno.
+- **Fin de semana (modo ensayo).** Sábado y domingo no hay buses en Peñalolén, así que la central y la app usan el horario del **lunes** (aparece un aviso amarillo).
+- **Fuera de horario** (antes de las 07:10 o después de las 21:00) no hay buses en ruta; la app muestra a qué hora pasa el primero del próximo día hábil.
 
-1. Elige el **recorrido** (Grecia, Dominicos o F. Castillo Velasco) y el **paradero** donde espera el alumno.
-2. Elige en cuántos minutos llega el bus a ese paradero (1, 2, 3 o 5).
-3. **▶ Partir bus**: el bus DEMO (borde negro) parte desde el inicio del recorrido. Llega al paradero en los minutos elegidos y desde ahí va 8 veces más rápido hasta el campus (unos 2 min).
-4. **Check-in de respaldo**: suma un check-in al bus DEMO si falla internet o el iPhone.
-5. **■ Terminar**: saca el bus DEMO del mapa.
-
-Teclas equivalentes: `D` partir, `C` check-in de respaldo, `X` terminar.
-
-En el iPhone del alumno elige **el mismo recorrido y paradero** que en la central, y **Minutos caminando = 1 o 2**: así la app muestra «🔔 Sal ahora» en vez de «no alcanzas».
-
-**Fin de semana (modo ensayo).** Sábado y domingo no hay buses en Peñalolén, así que la central y la app muestran el horario del **lunes** (aparece un aviso amarillo). El bus DEMO funciona a cualquier hora.
-
-Para mirar el mapa a otra hora: `central.html?hora=07:50` (y `&dia=3` para el día: 1 = lunes … 6 = sábado). El bus DEMO sigue sincronizado con la app aunque la central use `?hora`.
+Para mirar el mapa a otra hora: `central.html?hora=07:50` (y `&dia=3` para el día: 1 = lunes … 6 = sábado).
 
 ## Guion de la demo (unos 2 minutos)
 
-1. **Casa.** Un alumno mira la app: «Tu bus llega al paradero en X min… sal de casa en Y min». Cuando quedan 5 a 7 minutos aparece «Sal ahora».
-2. **Bus.** En la central tocamos **▶ Partir bus** (o la tecla `D`). Otro integrante es el conductor, con el QR pegado en la espalda, y «maneja» hacia el paradero mientras el bus DEMO avanza en el mapa.
-3. **Paradero.** El alumno «sube» y escanea el QR con la cámara del iPhone. La central suena, el bus DEMO destella y pierde un cupo; la app muestra «Check-in listo · llegas a las HH:MM».
-4. **Llegada.** El bus llega al campus y la app muestra «Llegaste a la UAI» con la promesa: «Sabes cuándo llega tu bus y si hay cupo, antes de salir.»
+Elijan para la presentación un recorrido con un bus que pase en ese momento (por ejemplo, a las 11:35 sale un Grecia → UAI desde Metro Grecia).
 
-Plan B si no hay internet en la sala: usen el hotspot de un celular para el computador y los iPhones. Si aun así falla, apriete `C` en la central para simular el check-in.
+1. **Casa.** El alumno abre la app, elige su recorrido y paradero, y ve en cuántos minutos llega su bus, cuántos cupos tiene y cuándo salir de casa.
+2. **Central.** Otro integrante muestra la central: el bus avanza en el mapa hacia el paradero.
+3. **Paradero.** El conductor (con el QR en la espalda) llega; el alumno «sube» y escanea el QR con la cámara del iPhone. La central suena, el bus destella y suma un pasajero.
+4. **Llegada.** La app muestra el viaje hasta el campus y, al llegar, la promesa: «Sabes cuándo llega tu bus y si hay cupo, antes de salir.»
+
+Plan B si no hay internet en la sala: usen el hotspot de un celular para el computador y los iPhones. Si aun así falla, muestren la app con el check-in que ya hicieron en el ensayo.
 
 ## Qué queda por probar en un iPhone real
 
